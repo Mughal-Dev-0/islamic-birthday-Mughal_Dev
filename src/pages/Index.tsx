@@ -3,16 +3,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Heart, Star, Sparkles, Download, Share2, Music, Volume2, VolumeX } from 'lucide-react';
+import { Heart, Star, Sparkles, Download, Share2, Music, Volume2, VolumeX, Gift, Moon, Cake } from 'lucide-react';
 
 const Index = () => {
   const [userName, setUserName] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
   const [showSurprise, setShowSurprise] = useState(false);
+  const [showGift, setShowGift] = useState(false);
   const [currentDua, setCurrentDua] = useState(0);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [isNarrating, setIsNarrating] = useState(false);
+  const [currentGift, setCurrentGift] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const duas = [
     "May Allah bless your life with barakah and imaan.",
@@ -21,6 +25,12 @@ const Index = () => {
     "May this new year bring you closer to Allah's path.",
     "May Allah shower His mercy and blessings upon you.",
     "May your faith grow stronger with each passing year."
+  ];
+
+  const gifts = [
+    { icon: "🎁", text: "A virtual gift!", description: "May this year bring you countless blessings" },
+    { icon: "🌙", text: "A spiritual reminder", description: "Remember Allah in all your endeavors" },
+    { icon: "💖", text: "A special dua", description: "May Allah grant you happiness and peace" }
   ];
 
   useEffect(() => {
@@ -75,41 +85,130 @@ const Index = () => {
     }
   };
 
-  const generateShareLink = () => {
-    const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?name=${encodeURIComponent(userName)}`;
-    navigator.clipboard.writeText(shareUrl);
-    alert('Share link copied to clipboard!');
+  const narrateBlessing = () => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(duas[currentDua]);
+      utterance.rate = 0.8;
+      utterance.pitch = 1;
+      utterance.volume = 0.8;
+      
+      utterance.onstart = () => setIsNarrating(true);
+      utterance.onend = () => setIsNarrating(false);
+      
+      speechSynthesis.speak(utterance);
+    }
   };
 
-  const downloadCard = async () => {
-    if (cardRef.current) {
-      try {
-        // Simple fallback for card download - create a new window with the card content
-        const cardContent = cardRef.current.innerHTML;
-        const newWindow = window.open('', '_blank');
-        if (newWindow) {
-          newWindow.document.write(`
-            <html>
-              <head>
-                <title>Birthday Card for ${userName}</title>
-                <style>
-                  body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-                  .card { background: white; padding: 40px; border-radius: 15px; text-align: center; max-width: 400px; margin: 0 auto; }
-                </style>
-              </head>
-              <body>
-                <div class="card">${cardContent}</div>
-              </body>
-            </html>
-          `);
-          newWindow.document.close();
-        }
-      } catch (error) {
-        console.error('Error generating card:', error);
-        alert('Card generation is ready for download!');
+  const stopNarration = () => {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      setIsNarrating(false);
+    }
+  };
+
+  const generateCardImage = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size
+    canvas.width = 800;
+    canvas.height = 600;
+
+    // Create gradient background
+    const gradient = ctx.createLinearGradient(0, 0, 800, 600);
+    gradient.addColorStop(0, '#667eea');
+    gradient.addColorStop(1, '#764ba2');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 800, 600);
+
+    // Add decorative border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(20, 20, 760, 560);
+
+    // Add title
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 48px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Happy Birthday!', 400, 120);
+
+    // Add name
+    ctx.font = 'bold 36px serif';
+    ctx.fillText(userName, 400, 180);
+
+    // Add Islamic greeting
+    ctx.font = '24px serif';
+    ctx.fillText('بارك الله في عمرك', 400, 220);
+
+    // Add blessing
+    ctx.font = '18px serif';
+    const blessing = duas[currentDua];
+    const words = blessing.split(' ');
+    let line = '';
+    let y = 280;
+    
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i] + ' ';
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > 700 && i > 0) {
+        ctx.fillText(line, 400, y);
+        line = words[i] + ' ';
+        y += 30;
+      } else {
+        line = testLine;
       }
     }
+    ctx.fillText(line, 400, y);
+
+    // Add decorative elements (simple geometric shapes as emoji alternatives)
+    ctx.font = '60px serif';
+    ctx.fillText('🎂', 200, 450);
+    ctx.fillText('🌙', 400, 450);
+    ctx.fillText('⭐', 600, 450);
+
+    // Add footer
+    ctx.font = '16px serif';
+    ctx.fillText('Created with ❤️ by Zain Mughal', 400, 550);
+  };
+
+  const downloadCard = () => {
+    generateCardImage();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `birthday-card-${userName}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+  };
+
+  const shareCard = () => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?name=${encodeURIComponent(userName)}`;
+    const message = `🎉 Happy Birthday ${userName}! 🎂 Check out your special Islamic birthday card: ${shareUrl}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: `Birthday Wishes for ${userName}`,
+        text: message,
+        url: shareUrl
+      });
+    } else {
+      // Fallback to WhatsApp
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+    }
+  };
+
+  const showSurpriseGift = () => {
+    setCurrentGift(Math.floor(Math.random() * gifts.length));
+    setShowGift(true);
+    setTimeout(() => setShowGift(false), 4000);
   };
 
   if (!showWelcome) {
@@ -163,6 +262,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden">
+      {/* SEO Meta tags would be handled by React Helmet in a real app */}
+      <title>Happy Birthday {userName} - Islamic Birthday Wishes</title>
+      
       {/* Floating elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(15)].map((_, i) => (
@@ -253,13 +355,56 @@ const Index = () => {
               <div className="text-sm text-white/70">☪️ Islamic Birthday Dua ☪️</div>
             </div>
             
-            <Button
-              onClick={() => setCurrentDua((prev) => (prev + 1) % duas.length)}
-              className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 border-0"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Next Blessing
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                onClick={() => setCurrentDua((prev) => (prev + 1) % duas.length)}
+                className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 border-0"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Next Blessing
+              </Button>
+              
+              {!isNarrating ? (
+                <Button
+                  onClick={narrateBlessing}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 border-0"
+                >
+                  <Volume2 className="h-4 w-4 mr-2" />
+                  Listen
+                </Button>
+              ) : (
+                <Button
+                  onClick={stopNarration}
+                  className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 border-0"
+                >
+                  <VolumeX className="h-4 w-4 mr-2" />
+                  Stop
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Surprise Gift Section */}
+        <Card className="mb-8 bg-white/10 backdrop-blur-sm border-0 text-white">
+          <CardContent className="p-8 text-center">
+            <h3 className="text-2xl font-semibold mb-6">🎁 Special Surprise</h3>
+            
+            {!showGift ? (
+              <Button
+                onClick={showSurpriseGift}
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 border-0 text-xl py-6 px-8"
+              >
+                <Gift className="h-6 w-6 mr-2" />
+                Reveal Your Gift
+              </Button>
+            ) : (
+              <div className="animate-scale-in">
+                <div className="text-6xl mb-4">{gifts[currentGift].icon}</div>
+                <h4 className="text-2xl font-bold mb-2">{gifts[currentGift].text}</h4>
+                <p className="text-lg text-white/90">{gifts[currentGift].description}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -268,14 +413,16 @@ const Index = () => {
           <CardContent className="p-8">
             <h3 className="text-2xl font-bold text-center mb-6 text-gray-800">Your Birthday Card</h3>
             
-            <div ref={cardRef} className="bg-gradient-to-br from-purple-100 to-pink-100 p-8 rounded-lg text-center border-4 border-dashed border-purple-300">
-              <div className="text-4xl mb-4">🎂 🌟 ☪️</div>
+            <div ref={cardRef} className="bg-gradient-to-br from-purple-100 to-pink-100 p-8 rounded-lg text-center border-4 border-dashed border-purple-300 mb-6">
+              <div className="text-4xl mb-4">🎂 🌙 ⭐</div>
               <h2 className="text-3xl font-bold text-purple-800 mb-4">Happy Birthday, {userName}!</h2>
               <p className="text-lg text-gray-700 mb-4">"{duas[currentDua]}"</p>
               <div className="text-2xl">🎈 🎊 🎁</div>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 mt-6">
+            <canvas ref={canvasRef} className="hidden" />
+            
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 onClick={downloadCard}
                 className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
@@ -284,11 +431,11 @@ const Index = () => {
                 Download Card
               </Button>
               <Button
-                onClick={generateShareLink}
+                onClick={shareCard}
                 className="flex-1 bg-green-500 hover:bg-green-600 text-white"
               >
                 <Share2 className="h-4 w-4 mr-2" />
-                Share Link
+                Share Card
               </Button>
             </div>
           </CardContent>
@@ -296,7 +443,9 @@ const Index = () => {
 
         {/* Footer */}
         <div className="text-center text-white/80">
-          <p className="mb-2">🎉 Created with love by Zain Mughal 🎉</p>
+          <p className="mb-2 transform transition-all duration-300 hover:scale-105 hover:text-white cursor-default">
+            🎉 Created with ❤️ by Zain Mughal 🎉
+          </p>
           <p className="text-sm">Share the joy - send birthday wishes to your loved ones!</p>
         </div>
       </div>
